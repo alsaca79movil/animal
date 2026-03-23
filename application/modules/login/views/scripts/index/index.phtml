@@ -1,0 +1,93 @@
+<div class="max-w-md mx-auto py-12">
+
+    <div class="text-center mb-8">
+        <div class="w-14 h-14 bg-violet-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 fill-white" viewBox="0 0 24 24">
+                <path d="M4.5 11a2.5 2.5 0 100-5 2.5 2.5 0 000 5zm15 0a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM12 10a3 3 0 100-6 3 3 0 000 6zM5 18.5c0-3.87 3.13-7 7-7s7 3.13 7 7v.5H5v-.5z"/>
+            </svg>
+        </div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Bienvenido de nuevo</h1>
+        <p class="text-sm text-gray-500 dark:text-slate-400 mt-1">Inicia sesión en tu cuenta</p>
+    </div>
+
+    <div class="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-8 shadow-sm">
+
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1.5">Email</label>
+                <input id="f-email" type="email" placeholder="tu@email.com"
+                    class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-4 py-3 text-sm outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 transition">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1.5">Contraseña</label>
+                <input id="f-password" type="password" placeholder="Tu contraseña"
+                    class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-4 py-3 text-sm outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200 transition">
+            </div>
+        </div>
+
+        <div id="error-login" class="hidden mt-4 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm px-4 py-3 rounded-xl"></div>
+
+        <button onclick="login()" id="btn-login"
+            class="w-full mt-6 bg-violet-600 hover:bg-violet-700 text-white font-bold py-3.5 rounded-xl transition-colors">
+            Iniciar sesión
+        </button>
+
+        <div class="flex items-center gap-3 my-5">
+            <div class="flex-1 h-px bg-gray-200 dark:bg-slate-700"></div>
+            <span class="text-xs text-gray-400">o</span>
+            <div class="flex-1 h-px bg-gray-200 dark:bg-slate-700"></div>
+        </div>
+
+        <p class="text-center text-sm text-gray-500 dark:text-slate-400">
+            ¿No tienes cuenta?
+            <a href="<?= $this->baseUrl('/registro') ?>" class="text-violet-600 font-semibold hover:underline">Regístrate gratis</a>
+        </p>
+    </div>
+</div>
+
+<script>
+const BASE = '<?= $this->baseUrl() ?>';
+
+document.getElementById('f-password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') login();
+});
+
+async function login() {
+    const email    = document.getElementById('f-email').value.trim();
+    const password = document.getElementById('f-password').value;
+    const err      = document.getElementById('error-login');
+    const btn      = document.getElementById('btn-login');
+
+    if (!email || !password) {
+        err.textContent = 'Por favor completa todos los campos.';
+        err.classList.remove('hidden'); return;
+    }
+
+    btn.disabled    = true;
+    btn.textContent = 'Ingresando...';
+    err.classList.add('hidden');
+
+    try {
+        const r   = await fetch(BASE + '/api/index/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        const res = await r.json();
+        if (res.status === 'ok') {
+            localStorage.setItem('ap_token', res.token);
+            localStorage.setItem('ap_user', JSON.stringify(res.data));
+            window.location.href = BASE + '/panel';
+        } else {
+            err.textContent = res.message || 'Error al iniciar sesión.';
+            err.classList.remove('hidden');
+        }
+    } catch(e) {
+        err.textContent = 'Error de conexión. Intenta de nuevo.';
+        err.classList.remove('hidden');
+    }
+
+    btn.disabled    = false;
+    btn.textContent = 'Iniciar sesión';
+}
+</script>

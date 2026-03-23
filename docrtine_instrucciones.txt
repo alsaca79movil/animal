@@ -1,0 +1,23 @@
+1) php.ini, BD sessiones*
+2) Php doctrine carpeta de proxys*
+3) como se corren los comando de doctrine para crear y actualizar BD
+4) Libreria de email
+
+
+1) index modificado
+2) vendor modificado, librerias
+3) doctrine
+
+en el CMD:
+
+c:\xampp8\htdocs\managercargo-php8>php vendor/doctrine/orm/bin/doctrine
+
+
+Para crear las anotaciones y entidades
+C:\xampp8\htdocs\managercargo-php8>php vendor/doctrine/orm/bin/doctrine orm:generate-entities ./library
+
+
+Al generar los entities ../ 
+Estas se generan en la raiz del HOST,--> ejemplo c:\xampp\APP
+luego hay que ir y copiar y pegar
+

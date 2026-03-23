@@ -1,0 +1,71 @@
+<!-- HERO -->
+
+
+<!-- CUIDADORES DESTACADOS -->
+<h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6">Cuidadores destacados</h2>
+<div id="cuidadores-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-12">
+    <div class="col-span-4 text-center text-gray-400 py-8">Cargando cuidadores...</div>
+</div>
+
+<script>
+fetch('<?= $this->baseUrl('/api/index/cuidadores') ?>')
+    .then(r => r.json())
+    .then(res => {
+        const grid = document.getElementById('cuidadores-grid');
+        if (!res.data || res.data.length === 0) {
+            grid.innerHTML = '<div class="col-span-4 text-center text-gray-400 py-8">No hay cuidadores disponibles aún.</div>';
+            return;
+        }
+        grid.innerHTML = res.data.map(c => `
+            <div onclick="window.location.href='<?= $this->baseUrl('/cuidadores/index/ver/slug/') ?>${c.slug}'" 
+                   class="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all cursor-pointer">
+                <div class="bg-violet-50 dark:bg-violet-900 h-44 flex items-center justify-center text-5xl relative">
+                    ${c.foto ? `<img src="${c.foto}" class="w-full h-full object-cover">` : '🐾'}
+                    ${c.superhost ? '<span class="absolute top-2 left-2 bg-white dark:bg-slate-800 dark:text-white text-xs font-bold px-3 py-1 rounded-full">Superhost</span>' : ''}
+                    <span class="absolute top-2 right-2 bg-white dark:bg-slate-800 dark:text-white text-xs font-semibold px-3 py-1 rounded-full">
+                        ★ ${c.rating ?? 'Nuevo'}
+                    </span>
+                </div>
+                <div class="p-4">
+                    <div class="font-semibold text-gray-900 dark:text-white">${c.nombre}</div>
+                    <div class="text-sm text-gray-500 dark:text-slate-400 mt-1 mb-2">${c.ciudad}</div>
+                    <div class="text-sm text-gray-900 dark:text-slate-200">
+                        <strong>$${Number(c.precionoche).toLocaleString('es-CO')}</strong> / noche
+                    </div>
+                    <div class="flex gap-2 flex-wrap mt-2">
+                        ${(c.categorias || []).map(cat =>
+                            `<span class="bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 text-xs px-3 py-1 rounded-full">
+                                ${cat.icono} ${cat.nombre}
+                            </span>`
+                        ).join('')}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    })
+    .catch(() => {
+        document.getElementById('cuidadores-grid').innerHTML =
+            '<div class="col-span-4 text-center text-red-400 py-8">Error cargando cuidadores.</div>';
+    });
+</script>
+
+<!-- CÓMO FUNCIONA -->
+<div class="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 p-10 mb-12">
+    <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-8">¿Cómo funciona?</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <?php $pasos = [
+            ['n'=>1, 'titulo'=>'Busca un cuidador',     'desc'=>'Encuentra cuidadores verificados cerca de ti, filtra por ciudad, fechas y tipo de mascota.'],
+            ['n'=>2, 'titulo'=>'Reserva con seguridad',  'desc'=>'Reserva en línea, paga de forma segura y recibe confirmación inmediata.'],
+            ['n'=>3, 'titulo'=>'Viaja tranquilo',        'desc'=>'Recibe fotos y actualizaciones de tu mascota mientras disfrutas tu viaje.'],
+        ]; ?>
+        <?php foreach ($pasos as $p): ?>
+        <div class="text-center">
+            <div class="w-11 h-11 bg-violet-600 rounded-full text-white font-bold text-lg flex items-center justify-center mx-auto mb-4">
+                <?= $p['n'] ?>
+            </div>
+            <h3 class="font-semibold text-gray-900 dark:text-white mb-2"><?= $p['titulo'] ?></h3>
+            <p class="text-sm text-gray-500 dark:text-slate-400 leading-relaxed"><?= $p['desc'] ?></p>
+        </div>
+        <?php endforeach; ?>
+    </div>
+</div>

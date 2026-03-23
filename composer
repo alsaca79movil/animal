@@ -1,0 +1,7 @@
+#!/bin/bash
+
+PHP_SERVICE="php-8.0.7"
+if [ -z `docker ps -q --no-trunc | grep $(docker-compose ps -q $PHP_SERVICE)` ]; then
+  docker-compose start $PHP_SERVICE
+fi
+docker-compose exec $PHP_SERVICE composer "$@"

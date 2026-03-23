@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="es" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnimalPet</title>
+
+    <script>
+        if (localStorage.getItem('tema') === 'oscuro') {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' };
+    </script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        main { animation: fadeIn 0.2s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+
+    <?= $this->headStyle() ?>
+    <?= $this->headScript() ?>
+</head>
+<body class="bg-gray-50 dark:bg-slate-900 min-h-screen flex flex-col transition-colors duration-200">
+
+    <!-- NAVBAR -->
+    <nav class="sticky top-0 z-50 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 shadow-sm">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between gap-4">
+
+            <!-- Logo -->
+            <a href="<?= $this->baseUrl('/') ?>" class="flex items-center gap-2 flex-shrink-0">
+                <div class="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 fill-white" viewBox="0 0 24 24">
+                        <path d="M4.5 11a2.5 2.5 0 100-5 2.5 2.5 0 000 5zm15 0a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM12 10a3 3 0 100-6 3 3 0 000 6zM5 18.5c0-3.87 3.13-7 7-7s7 3.13 7 7v.5H5v-.5z"/>
+                    </svg>
+                </div>
+                <span class="text-violet-600 font-bold text-xl tracking-tight">animalpet</span>
+            </a>
+
+            <!-- Search Bar -->
+            <div class="hidden md:flex items-center border border-gray-300 dark:border-slate-600 rounded-full shadow-sm hover:shadow-md transition-shadow divide-x divide-gray-200 dark:divide-slate-600 bg-white dark:bg-slate-800">
+
+                <!-- Mascota -->
+                <div class="px-5 py-3 rounded-l-full hover:bg-gray-100 dark:hover:bg-slate-700 cursor-pointer relative"
+                     onclick="event.stopPropagation(); toggleSearchDrop('drop-especie')">
+                    <span class="block text-xs font-semibold text-gray-800 dark:text-slate-200">Mascota</span>
+                    <span id="lbl-especie" class="text-sm text-gray-500 dark:text-slate-400">¿Qué mascota?</span>
+                    <div id="drop-especie"
+                         class="hidden absolute top-14 left-0 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-lg py-2 w-44 z-50"
+                         onclick="event.stopPropagation()"></div>
+                </div>
+
+                <!-- Ciudad -->
+                <div class="px-5 py-3 hover:bg-gray-100 dark:hover:bg-slate-700">
+                    <span class="block text-xs font-semibold text-gray-800 dark:text-slate-200">Ciudad</span>
+                    <input id="search-ciudad" type="text" placeholder="¿Dónde buscar?"
+                        class="text-sm text-gray-500 dark:text-slate-400 bg-transparent outline-none w-28"
+                        onclick="event.stopPropagation()">
+                </div>
+
+                <!-- Desde -->
+                <div class="px-4 py-3 hover:bg-gray-100 dark:hover:bg-slate-700">
+                    <span class="block text-xs font-semibold text-gray-800 dark:text-slate-200">Desde</span>
+                    <input id="search-desde" type="date"
+                        class="text-sm text-gray-500 dark:text-slate-400 bg-transparent outline-none w-32"
+                        onclick="event.stopPropagation()">
+                </div>
+
+                <!-- Hasta + botón -->
+                <div class="px-4 py-3 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-r-full flex items-center gap-3">
+                    <div>
+                        <span class="block text-xs font-semibold text-gray-800 dark:text-slate-200">Hasta</span>
+                        <input id="search-hasta" type="date"
+                            class="text-sm text-gray-500 dark:text-slate-400 bg-transparent outline-none w-32"
+                            onclick="event.stopPropagation()">
+                    </div>
+                    <button onclick="buscarCuidadores()" class="bg-violet-600 hover:bg-violet-700 text-white rounded-full p-2 transition-colors flex-shrink-0">
+                        <svg class="w-4 h-4 fill-white" viewBox="0 0 24 24">
+                            <path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Nav derecho -->
+            <div class="flex items-center gap-2 flex-shrink-0">
+
+                <!-- Publicar — solo si logueado -->
+                <a id="nav-publicar" href="<?= $this->baseUrl('/mascota/nueva') ?>#mascotas"
+                   class="hidden px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-300 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
+                    Publicar mascota
+                </a>
+
+                <!-- Dark mode -->
+                <button id="btn-tema" onclick="toggleTema()"
+                    class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors text-gray-600 dark:text-slate-300">
+                    <svg id="icon-luna" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M9.528 1.718a.75.75 0 0 1 .162.819A8.97 8.97 0 0 0 9 6a9 9 0 0 0 9 9 8.97 8.97 0 0 0 3.463-.69.75.75 0 0 1 .981.98 10.503 10.503 0 0 1-9.694 6.46c-5.799 0-10.5-4.7-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 0 1 .818.162z"/>
+                    </svg>
+                    <svg id="icon-sol" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2.25a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0V3a.75.75 0 0 1 .75-.75zm4.5 10.5a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0zm-1.687-6.013a.75.75 0 0 1 1.06 0l1.591 1.59a.75.75 0 1 1-1.06 1.061l-1.591-1.59a.75.75 0 0 1 0-1.061zM21.75 12a.75.75 0 0 1-.75.75h-2.25a.75.75 0 0 1 0-1.5H21a.75.75 0 0 1 .75.75zM12 18a.75.75 0 0 1 .75.75V21a.75.75 0 0 1-1.5 0v-2.25A.75.75 0 0 1 12 18zm4.773-1.227a.75.75 0 0 1 0 1.06l-1.59 1.591a.75.75 0 1 1-1.061-1.06l1.59-1.591a.75.75 0 0 1 1.061 0zM3.75 12a.75.75 0 0 1-.75.75H.75a.75.75 0 0 1 0 1.5H3a.75.75 0 0 1 .75-.75zM6.166 5.106a.75.75 0 0 1 1.06 1.06L5.636 7.757a.75.75 0 0 1-1.061-1.06l1.591-1.591z"/>
+                    </svg>
+                </button>
+
+                <!-- Menú / Avatar -->
+                <div class="relative">
+                    <button onclick="toggleMenu()" id="btn-menu"
+                        class="flex items-center gap-2 border border-gray-300 dark:border-slate-600 rounded-full px-3 py-2 hover:shadow-md transition-shadow bg-white dark:bg-slate-800">
+                        <svg class="w-4 h-4 text-gray-700 dark:text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                        <div id="nav-avatar" class="w-8 h-8 bg-slate-600 rounded-full flex items-center justify-center overflow-hidden">
+                            <svg class="w-5 h-5 fill-white" viewBox="0 0 24 24">
+                                <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+                            </svg>
+                        </div>
+                    </button>
+
+                    <!-- Dropdown -->
+                    <div id="nav-dropdown"
+                        class="hidden absolute right-0 mt-2 w-52 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-lg py-2 z-50">
+
+                        <!-- Logueado -->
+                        <div id="menu-logueado" class="hidden">
+                            <div id="menu-nombre" class="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100 dark:border-slate-700 mb-1"></div>
+                            <a href="<?= $this->baseUrl('/panel') ?>"
+                               class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                Mi panel
+                            </a>
+                            <a href="<?= $this->baseUrl('/panel') ?>"
+                               class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                Configuración
+                            </a>
+                            <div class="border-t border-gray-100 dark:border-slate-700 mt-1 pt-1">
+                                <button onclick="cerrarSesionNav()"
+                                    class="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                                    Cerrar sesión
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- No logueado -->
+                        <div id="menu-noLogueado">
+                            <a href="<?= $this->baseUrl('/registro') ?>"
+                               class="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-800 dark:text-white hover:bg-gray-50 dark:hover:bg-slate-700">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                                Registrarse
+                            </a>
+                            <a href="<?= $this->baseUrl('/login') ?>"
+                               class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
+                                Iniciar sesión
+                            </a>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BARRA DE CATEGORÍAS -->
+        <div class="border-t border-gray-100 dark:border-slate-700 max-w-7xl mx-auto px-6">
+            <div class="flex gap-8 overflow-x-auto scrollbar-hide">
+                <?php $cats = [
+                    ['url'=>'/', 'icon'=>'🐶', 'label'=>'Perros'],
+                    ['url'=>'/', 'icon'=>'🐱', 'label'=>'Gatos'],
+                    ['url'=>'/', 'icon'=>'🐰', 'label'=>'Conejos'],
+                    ['url'=>'/', 'icon'=>'🐦', 'label'=>'Aves'],
+                    ['url'=>'/', 'icon'=>'🐠', 'label'=>'Peces'],
+                    ['url'=>'/', 'icon'=>'🦎', 'label'=>'Reptiles'],
+                    ['url'=>'/', 'icon'=>'❤️', 'label'=>'Adopción'],
+                ]; ?>
+                <?php foreach ($cats as $cat): ?>
+                    <?php $active = false; ?>
+                    <a href="<?= $this->baseUrl($cat['url']) ?>"
+                       class="flex flex-col items-center gap-1 py-4 px-1 border-b-2 flex-shrink-0 transition-colors text-sm font-medium whitespace-nowrap
+                              <?= $active
+                                ? 'border-violet-600 text-violet-600'
+                                : 'border-transparent text-gray-500 dark:text-slate-400 hover:border-gray-300 dark:hover:border-slate-500 hover:text-gray-700 dark:hover:text-slate-200' ?>">
+                        <span class="text-2xl"><?= $cat['icon'] ?></span>
+                        <span><?= $cat['label'] ?></span>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </nav>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="flex-1 max-w-7xl mx-auto w-full px-6 py-10">
+        <?= $this->layout()->content ?>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 mt-auto">
+        <div class="max-w-7xl mx-auto px-6 py-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-500 dark:text-slate-400">
+            <span>© <?= date('Y') ?> AnimalPet · Cali, Colombia</span>
+            <div class="flex gap-6">
+                <a href="<?= $this->baseUrl('/terminos') ?>"   class="hover:underline hover:text-gray-800 dark:hover:text-slate-200">Términos</a>
+                <a href="<?= $this->baseUrl('/privacidad') ?>" class="hover:underline hover:text-gray-800 dark:hover:text-slate-200">Privacidad</a>
+                <a href="<?= $this->baseUrl('/contacto') ?>"   class="hover:underline hover:text-gray-800 dark:hover:text-slate-200">Soporte</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const BASE_URL = '<?= $this->baseUrl() ?>';
+
+        // Dark mode
+        function toggleTema() {
+            const esDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('tema', esDark ? 'oscuro' : 'claro');
+            document.getElementById('icon-luna').classList.toggle('hidden', esDark);
+            document.getElementById('icon-sol').classList.toggle('hidden', !esDark);
+        }
+        if (localStorage.getItem('tema') === 'oscuro') {
+            document.getElementById('icon-luna').classList.add('hidden');
+            document.getElementById('icon-sol').classList.remove('hidden');
+        }
+
+        // Menú dropdown
+        function toggleMenu() {
+            document.getElementById('nav-dropdown').classList.toggle('hidden');
+        }
+
+        // Cerrar menús al click fuera
+        document.addEventListener('click', function(e) {
+            const btnMenu = document.getElementById('btn-menu');
+            const dropMenu = document.getElementById('nav-dropdown');
+            if (!btnMenu.contains(e.target) && !dropMenu.contains(e.target)) {
+                dropMenu.classList.add('hidden');
+            }
+            const dropEsp = document.getElementById('drop-especie');
+            if (dropEsp && !e.target.closest('[onclick*="drop-especie"]') && !dropEsp.contains(e.target)) {
+                dropEsp.classList.add('hidden');
+            }
+        });
+
+        // Buscador
+        let especieSeleccionada = null;
+
+        function toggleSearchDrop(id) {
+            document.getElementById(id).classList.toggle('hidden');
+        }
+
+        function seleccionarEspecie(id, label) {
+            especieSeleccionada = id || null;
+            document.getElementById('lbl-especie').textContent = label;
+            document.getElementById('drop-especie').classList.add('hidden');
+        }
+
+        function buscarCuidadores() {
+            const ciudad = document.getElementById('search-ciudad').value.trim();
+            const desde  = document.getElementById('search-desde').value;
+            const hasta  = document.getElementById('search-hasta').value;
+            let url = BASE_URL + '/cuidadores/index/buscar?';
+            if (especieSeleccionada) url += 'especie=' + especieSeleccionada + '&';
+            if (ciudad) url += 'ciudad=' + encodeURIComponent(ciudad.toUpperCase()) + '&';
+            if (desde)  url += 'desde=' + desde + '&';
+            if (hasta)  url += 'hasta=' + hasta;
+            window.location.href = url;
+        }
+
+        // Cargar categorías en dropdown del buscador
+        fetch(BASE_URL + '/api/index/categorias')
+            .then(r => r.json())
+            .then(res => {
+                const drop = document.getElementById('drop-especie');
+                if (!drop || !res.data) return;
+                drop.innerHTML =
+                    `<div onclick="seleccionarEspecie(0, '🐾 Todas')"
+                        class="px-4 py-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300">
+                        🐾 Todas
+                    </div>` +
+                    res.data.map(c => `
+                    <div onclick="seleccionarEspecie(${c.id}, '${c.icono} ${c.nombre}')"
+                        class="px-4 py-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300">
+                        ${c.icono} ${c.nombre}
+                    </div>`).join('');
+            });
+
+        // Cerrar sesión desde navbar
+        function cerrarSesionNav() {
+            localStorage.removeItem('ap_token');
+            localStorage.removeItem('ap_user');
+            window.location.href = BASE_URL + '/login';
+        }
+
+        // Inicializar navbar según sesión JWT
+        (function() {
+            const token = localStorage.getItem('ap_token');
+            const user  = localStorage.getItem('ap_user');
+            if (token && user) {
+                try {
+                    const u = JSON.parse(user);
+                    document.getElementById('menu-logueado').classList.remove('hidden');
+                    document.getElementById('menu-noLogueado').classList.add('hidden');
+                    document.getElementById('menu-nombre').textContent = u.nombre || 'Mi cuenta';
+                    const avatar  = document.getElementById('nav-avatar');
+                    const inicial = (u.nombre || 'U')[0].toUpperCase();
+                    avatar.innerHTML = `<span class="text-white text-sm font-bold">${inicial}</span>`;
+                    avatar.classList.remove('bg-slate-600');
+                    avatar.classList.add('bg-violet-600');
+                    document.getElementById('nav-publicar').classList.remove('hidden');
+                    document.getElementById('nav-publicar').classList.add('block');
+                } catch(e) {}
+            }
+        })();
+    </script>
+
+</body>
+</html>

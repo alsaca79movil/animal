@@ -1,0 +1,7 @@
+#!/bin/bash
+
+if test -x "./php"; then
+  ./php vendor/bin/doctrine "$@"
+else
+  env php vendor/bin/doctrine "$@"
+fi

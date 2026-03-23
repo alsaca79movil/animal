@@ -1,0 +1,572 @@
+<div id="panel-container" class="max-w-3xl mx-auto py-8">
+    <div class="text-center text-gray-400 dark:text-slate-500 py-20">Cargando panel...</div>
+</div>
+
+<script>
+const BASE  = '<?= $this->baseUrl() ?>';
+const token = localStorage.getItem('ap_token');
+
+async function cargarPanel() {
+    try {
+        const r   = await fetch(BASE + '/api/index/mipanel', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const res = await r.json();
+
+        if (res.status !== 'ok') {
+            localStorage.removeItem('ap_token');
+            localStorage.removeItem('ap_user');
+            window.location.href = BASE + '/login';
+            return;
+        }
+
+        renderPanel(res.data);
+        return true;
+
+    } catch(e) {
+        document.getElementById('panel-container').innerHTML =
+            '<div class="text-center text-red-400 py-20">Error cargando el panel.</div>';
+    }
+}
+
+function renderPanel(u) {
+    const iniciales  = (u.nombre[0] || '') + (u.apellido[0] || '');
+    const esCuidador = u.escuidador == true || u.escuidador == 1;
+
+    document.getElementById('panel-container').innerHTML = `
+
+        <div class="flex items-center gap-5 mb-8">
+            <div class="w-16 h-16 rounded-full bg-violet-100 dark:bg-violet-900 flex items-center justify-center text-xl font-bold text-violet-600 dark:text-violet-300 flex-shrink-0">
+                ${u.foto ? `<img src="${u.foto}" class="w-full h-full object-cover rounded-full">` : iniciales}
+            </div>
+            <div>
+                <h1 class="text-xl font-bold text-gray-900 dark:text-white">${u.nombre} ${u.apellido}</h1>
+                <p class="text-sm text-gray-500 dark:text-slate-400 mt-0.5">${u.email} · ${u.ciudad || ''}</p>
+                <div class="flex gap-2 mt-2">
+                    ${esCuidador ? '<span class="text-xs font-semibold bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300 px-3 py-1 rounded-full">Cuidador</span>' : ''}
+                    ${u.tienemascota == 1 || u.tienemascota == true ? '<span class="text-xs font-semibold bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-3 py-1 rounded-full">Dueño</span>' : ''}
+                </div>
+            </div>
+        </div>
+
+        <div class="flex gap-1 border-b border-gray-200 dark:border-slate-700 mb-6">
+            <button onclick="showTab('perfil', this)"
+                class="tab-btn px-5 py-2.5 text-sm font-semibold border-b-2 border-violet-600 text-violet-600 -mb-px">
+                Mi perfil
+            </button>
+            ${esCuidador ? `
+            <button onclick="showTab('cuidador', this)"
+                class="tab-btn px-5 py-2.5 text-sm font-semibold border-b-2 border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 -mb-px">
+                Perfil cuidador
+            </button>` : ''}
+            <button onclick="showTab('mascotas', this)"
+                class="tab-btn px-5 py-2.5 text-sm font-semibold border-b-2 border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 -mb-px">
+                Mis mascotas
+            </button>
+            <button onclick="showTab('cuenta', this)"
+                class="tab-btn px-5 py-2.5 text-sm font-semibold border-b-2 border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 -mb-px">
+                Cuenta
+            </button>
+        </div>
+
+        <!-- TAB PERFIL -->
+        <div id="tab-perfil">
+            <div class="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-6 mb-4">
+                <h2 class="text-sm font-bold text-gray-900 dark:text-white mb-5">Información personal</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Nombre</label>
+                        <input id="p-nombre" type="text" value="${u.nombre}"
+                            class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Apellido</label>
+                        <input id="p-apellido" type="text" value="${u.apellido}"
+                            class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Email</label>
+                        <input type="email" value="${u.email}" disabled
+                            class="w-full border border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-700 text-gray-400 rounded-xl px-3 py-2.5 text-sm cursor-not-allowed">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Teléfono</label>
+                        <input id="p-telefono" type="tel" value="${u.telefono || ''}"
+                            class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Ciudad</label>
+                        <input id="p-ciudad" type="text" value="${u.ciudad || ''}"
+                            class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Departamento</label>
+                        <input id="p-departamento" type="text" value="${u.departamento || ''}"
+                            class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                    </div>
+                </div>
+
+                <div class="mt-4 flex items-center gap-3">
+                    <input type="checkbox" id="p-tienemascota" ${u.tienemascota == 1 || u.tienemascota == true ? 'checked' : ''}
+                        class="w-5 h-5 rounded accent-violet-600 cursor-pointer">
+                    <label for="p-tienemascota" class="text-sm font-semibold text-gray-700 dark:text-slate-300 cursor-pointer">
+                        Tengo mascota
+                    </label>
+                </div>
+
+                <div id="msg-perfil" class="hidden text-sm mt-3"></div>
+                <button onclick="guardarPerfil()"
+                    class="mt-5 bg-violet-600 hover:bg-violet-700 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors">
+                    Guardar cambios
+                </button>
+            </div>
+        </div>
+
+        <!-- TAB CUIDADOR -->
+        ${esCuidador ? `
+        <div id="tab-cuidador" class="hidden">
+            <div class="grid grid-cols-3 gap-3 mb-4">
+                <div class="bg-violet-50 dark:bg-violet-950 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-bold text-violet-600">${u.cuidador?.rating ?? '—'}</div>
+                    <div class="text-xs text-gray-400 mt-1">Rating</div>
+                </div>
+                <div class="bg-violet-50 dark:bg-violet-950 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-bold text-violet-600">${u.cuidador?.totalresenas ?? 0}</div>
+                    <div class="text-xs text-gray-400 mt-1">Reseñas</div>
+                </div>
+                <div class="bg-violet-50 dark:bg-violet-950 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-bold text-violet-600">$${Number(u.cuidador?.precionoche || 0).toLocaleString('es-CO')}</div>
+                    <div class="text-xs text-gray-400 mt-1">Precio/noche</div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-6 mb-4">
+                <h2 class="text-sm font-bold text-gray-900 dark:text-white mb-5">Perfil público</h2>
+
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Descripción</label>
+                    <textarea id="c-descripcion" rows="3"
+                        class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none">${u.cuidador?.descripcion || ''}</textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Precio noche (COP)</label>
+                        <input id="c-precionoche" type="number" value="${u.cuidador?.precionoche || ''}"
+                            class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Precio día (COP)</label>
+                        <input id="c-preciodia" type="number" value="${u.cuidador?.preciodia || ''}"
+                            class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Capacidad mascotas</label>
+                        <input id="c-capacidad" type="number" min="1" max="10" value="${u.cuidador?.capacidadmascotas || ''}"
+                            class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Dirección</label>
+                        <input id="c-direccion" type="text" value="${u.cuidador?.direccion || ''}"
+                            class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Latitud</label>
+                        <input id="c-latitud" type="text" value="${u.cuidador?.latitud || ''}"
+                            class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Longitud</label>
+                        <input id="c-longitud" type="text" value="${u.cuidador?.longitud || ''}"
+                            class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 mb-6">
+                    <input type="checkbox" id="c-tienepatio" ${u.cuidador?.tienepatio == 1 || u.cuidador?.tienepatio == true ? 'checked' : ''}
+                        class="w-5 h-5 rounded accent-violet-600 cursor-pointer">
+                    <label for="c-tienepatio" class="text-sm font-semibold text-gray-700 dark:text-slate-300 cursor-pointer">
+                        Tengo patio
+                    </label>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Mascotas que acepto</label>
+                    <div id="cats-panel" class="grid grid-cols-3 gap-2">
+                        <div class="text-gray-400 text-xs col-span-3">Cargando categorías...</div>
+                    </div>
+                </div>
+
+                <div id="msg-cuidador" class="hidden text-sm mt-3"></div>
+                <button onclick="guardarCuidador()"
+                    class="mt-2 bg-violet-600 hover:bg-violet-700 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors">
+                    Guardar cambios
+                </button>
+            </div>
+        </div>` : ''}
+
+        <div id="tab-mascotas" class="hidden">
+        <div class="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-6 mb-4">
+            <h2 class="text-sm font-bold text-gray-900 dark:text-white mb-5">Agregar mascota</h2>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Nombre</label>
+                    <input id="m-nombre" type="text" placeholder="Nombre de tu mascota"
+                        class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Especie</label>
+                    <select id="m-categoria"
+                        class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                        <option value="">Selecciona...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Raza</label>
+                    <input id="m-raza" type="text" placeholder="Ej: Golden Retriever"
+                        class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Edad (años)</label>
+                    <input id="m-edad" type="number" min="0" max="30" step="0.5" placeholder="Ej: 2"
+                        class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Peso (kg)</label>
+                    <input id="m-peso" type="number" min="0" max="100" step="0.1" placeholder="Ej: 5.5"
+                        class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Descripción</label>
+                <textarea id="m-descripcion" rows="2" placeholder="Comportamiento, necesidades especiales..."
+                    class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"></textarea>
+            </div>
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Fotos (máx. 5)</label>
+                <div id="m-fotos-grid" class="grid grid-cols-4 gap-2 mb-2">
+                    <label for="m-fotos"
+                        class="aspect-square rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-600 flex flex-col items-center justify-center cursor-pointer hover:border-violet-500 transition-colors">
+                        <svg class="w-6 h-6 text-gray-400 mb-1" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                        <span class="text-xs text-gray-400 text-center">Agregar fotos</span>
+                    </label>
+                </div>
+                <input id="m-fotos" type="file" multiple accept="image/*" class="hidden">
+                <p class="text-xs text-gray-400">JPG, PNG o WEBP · máx 5 fotos · se comprimen automáticamente</p>
+            </div>
+            <div id="msg-mascota" class="hidden text-sm mt-3"></div>
+            <button onclick="guardarMascota()"
+                class="mt-2 bg-violet-600 hover:bg-violet-700 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors">
+                Guardar mascota
+            </button>
+        </div>
+        <div id="lista-mascotas" class="space-y-3"></div>
+    </div>
+        
+        <!-- TAB CUENTA -->
+        <div id="tab-cuenta" class="hidden">
+            <div class="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-6 mb-4">
+                <h2 class="text-sm font-bold text-gray-900 dark:text-white mb-5">Cambiar contraseña</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Contraseña actual</label>
+                        <input id="pass-actual" type="password" placeholder="••••••••"
+                            class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Nueva contraseña</label>
+                        <input id="pass-nueva" type="password" placeholder="••••••••"
+                            class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Confirmar nueva</label>
+                        <input id="pass-confirmar" type="password" placeholder="••••••••"
+                            class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+                    </div>
+                </div>
+                <div id="msg-pass" class="hidden text-sm mt-3"></div>
+                <button onclick="cambiarPassword()"
+                    class="mt-5 bg-violet-600 hover:bg-violet-700 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors">
+                    Actualizar contraseña
+                </button>
+            </div>
+            <div class="flex justify-end">
+                <button onclick="cerrarSesion()"
+                    class="text-sm font-semibold text-red-500 border border-red-200 dark:border-red-800 px-5 py-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-950 transition-colors">
+                    Cerrar sesión
+                </button>
+            </div>
+        </div>
+    `;
+
+    // Cargar categorías si es cuidador
+    if (esCuidador) {
+        cargarCategorias(u.cuidador?.categorias || []);
+    }
+}
+
+async function cargarCategorias(seleccionadas) {
+    const r   = await fetch(BASE + '/api/index/categorias');
+    const res = await r.json();
+    const grid = document.getElementById('cats-panel');
+    if (!grid) return;
+
+    const idsSeleccionados = seleccionadas.map(c => c.id);
+
+    grid.innerHTML = (res.data || []).map(cat => `
+        <div onclick="toggleCatPanel(this, ${cat.id})"
+            class="cat-panel-item border-2 rounded-xl px-3 py-2 flex items-center gap-2 cursor-pointer transition-all text-sm font-medium
+                   ${idsSeleccionados.includes(cat.id)
+                     ? 'border-violet-600 bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300'
+                     : 'border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-300 hover:border-violet-400'}"
+            data-id="${cat.id}">
+            <span>${cat.icono}</span> ${cat.nombre}
+        </div>
+    `).join('');
+}
+
+function toggleCatPanel(el, id) {
+    const sel = el.classList.contains('border-violet-600');
+    el.className = `cat-panel-item border-2 rounded-xl px-3 py-2 flex items-center gap-2 cursor-pointer transition-all text-sm font-medium ${
+        !sel ? 'border-violet-600 bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300'
+             : 'border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-300 hover:border-violet-400'
+    }`;
+    el.dataset.id = id;
+}
+
+function showTab(name, el) {
+    ['perfil', 'cuidador', 'mascotas', 'cuenta'].forEach(t => {
+        const tab = document.getElementById('tab-' + t);
+        if (tab) tab.classList.add('hidden');
+    });
+    const target = document.getElementById('tab-' + name);
+    if (target) target.classList.remove('hidden');
+    document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('border-violet-600', 'text-violet-600');
+        b.classList.add('border-transparent', 'text-gray-500');
+    });
+    el.classList.add('border-violet-600', 'text-violet-600');
+    el.classList.remove('border-transparent', 'text-gray-500');
+
+    if (name === 'mascotas') {
+        cargarCategoriasMascota();
+        cargarMismascotas();
+    }
+}
+
+async function guardarPerfil() {
+    const data = {
+        nombre:       document.getElementById('p-nombre').value.trim(),
+        apellido:     document.getElementById('p-apellido').value.trim(),
+        telefono:     document.getElementById('p-telefono').value.trim(),
+        ciudad:       document.getElementById('p-ciudad').value.trim(),
+        departamento: document.getElementById('p-departamento').value.trim(),
+        tienemascota: document.getElementById('p-tienemascota').checked,
+    };
+    const r   = await fetch(BASE + '/api/index/actualizarperfil', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify(data)
+    });
+    const res = await r.json();
+    const msg = document.getElementById('msg-perfil');
+    msg.textContent = res.status === 'ok' ? '✓ Guardado correctamente' : res.message;
+    msg.className   = res.status === 'ok' ? 'text-sm mt-3 text-green-600' : 'text-sm mt-3 text-red-500';
+}
+
+async function guardarCuidador() {
+    const cats = Array.from(document.querySelectorAll('.cat-panel-item.border-violet-600'))
+                      .map(el => parseInt(el.dataset.id));
+    const data = {
+        descripcion:       document.getElementById('c-descripcion').value.trim(),
+        precionoche:       document.getElementById('c-precionoche').value,
+        preciodia:         document.getElementById('c-preciodia').value,
+        capacidadmascotas: document.getElementById('c-capacidad').value,
+        direccion:         document.getElementById('c-direccion').value.trim(),
+        latitud:           document.getElementById('c-latitud').value,
+        longitud:          document.getElementById('c-longitud').value,
+        tienepatio:        document.getElementById('c-tienepatio').checked,
+        categorias:        cats,
+    };
+    const r   = await fetch(BASE + '/api/index/actualizarcuidador', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify(data)
+    });
+    const res = await r.json();
+    const msg = document.getElementById('msg-cuidador');
+    msg.textContent = res.status === 'ok' ? '✓ Guardado correctamente' : res.message;
+    msg.className   = res.status === 'ok' ? 'text-sm mt-3 text-green-600' : 'text-sm mt-3 text-red-500';
+}
+
+async function cambiarPassword() {
+    const actual    = document.getElementById('pass-actual').value;
+    const nueva     = document.getElementById('pass-nueva').value;
+    const confirmar = document.getElementById('pass-confirmar').value;
+    const msg       = document.getElementById('msg-pass');
+    if (nueva !== confirmar) {
+        msg.textContent = 'Las contraseñas no coinciden';
+        msg.className   = 'text-sm mt-3 text-red-500';
+        return;
+    }
+    const r   = await fetch(BASE + '/api/index/cambiarpassword', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ password_actual: actual, password_nueva: nueva })
+    });
+    const res = await r.json();
+    msg.textContent = res.status === 'ok' ? '✓ Contraseña actualizada' : res.message;
+    msg.className   = res.status === 'ok' ? 'text-sm mt-3 text-green-600' : 'text-sm mt-3 text-red-500';
+}
+
+function cerrarSesion() {
+    localStorage.removeItem('ap_token');
+    localStorage.removeItem('ap_user');
+    window.location.href = BASE + '/login';
+}
+
+async function cargarCategoriasMascota() {
+    const r   = await fetch(BASE + '/api/index/categorias');
+    const res = await r.json();
+    const sel = document.getElementById('m-categoria');
+    if (!sel || !res.data) return;
+    res.data.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.icono + ' ' + c.nombre;
+        sel.appendChild(opt);
+    });
+}
+
+// Almacén de blobs comprimidos
+let fotosComprimidas = [];
+
+function renderFotosGrid() {
+    const grid = document.getElementById('m-fotos-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    fotosComprimidas.forEach((blob, i) => {
+        const url = URL.createObjectURL(blob);
+        const div = document.createElement('div');
+        div.className = 'relative aspect-square rounded-xl overflow-hidden border border-gray-200 dark:border-slate-600';
+        div.innerHTML = `
+            <img src="${url}" class="w-full h-full object-cover">
+            <button type="button" onclick="quitarFoto(${i})"
+                class="absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs leading-none">✕</button>`;
+        grid.appendChild(div);
+    });
+    // Botón agregar si hay menos de 5
+    if (fotosComprimidas.length < 5) {
+        const label = document.createElement('label');
+        label.htmlFor = 'm-fotos';
+        label.className = 'aspect-square rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-600 flex flex-col items-center justify-center cursor-pointer hover:border-violet-500 transition-colors';
+        label.innerHTML = `<svg class="w-6 h-6 text-gray-400 mb-1" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 4.5v15m7.5-7.5h-15"/></svg><span class="text-xs text-gray-400 text-center">Agregar</span>`;
+        grid.appendChild(label);
+    }
+}
+
+function comprimirImagen(file) {
+    return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = ev => {
+            const img = new Image();
+            img.onload = () => {
+                const maxW   = 800;
+                const canvas = document.createElement('canvas');
+                let w = img.width, h = img.height;
+                if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+                canvas.width  = w;
+                canvas.height = h;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.8);
+            };
+            img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+document.addEventListener('change', async function(e) {
+    if (e.target.id !== 'm-fotos') return;
+    const nuevos = Array.from(e.target.files);
+    for (const f of nuevos) {
+        if (fotosComprimidas.length >= 5) break;
+        const blob = await comprimirImagen(f);
+        fotosComprimidas.push(blob);
+    }
+    e.target.value = ''; // reset input para poder añadir más
+    renderFotosGrid();
+});
+
+function quitarFoto(idx) {
+    fotosComprimidas.splice(idx, 1);
+    renderFotosGrid();
+}
+
+async function guardarMascota() {
+    const msg  = document.getElementById('msg-mascota');
+    const form = new FormData();
+    form.append('nombre',       document.getElementById('m-nombre').value.trim());
+    form.append('raza',         document.getElementById('m-raza').value.trim());
+    form.append('edad',         document.getElementById('m-edad').value);
+    form.append('peso',         document.getElementById('m-peso').value);
+    form.append('descripcion',  document.getElementById('m-descripcion').value.trim());
+    form.append('categoria_id', document.getElementById('m-categoria').value);
+
+    fotosComprimidas.forEach((blob, i) => form.append('fotos[]', blob, 'foto_' + i + '.jpg'));
+
+    msg.textContent = 'Guardando...';
+    msg.className   = 'text-sm mt-3 text-gray-400';
+
+    const r   = await fetch(BASE + '/api/index/guardarmascota', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token },
+        body: form
+    });
+    const res = await r.json();
+    msg.textContent = res.status === 'ok' ? '✓ Mascota guardada' : res.message;
+    msg.className   = res.status === 'ok' ? 'text-sm mt-3 text-green-600' : 'text-sm mt-3 text-red-500';
+    if (res.status === 'ok') {
+        fotosComprimidas = [];
+        renderFotosGrid();
+        cargarMismascotas();
+    }
+}
+
+async function cargarMismascotas() {
+    const r   = await fetch(BASE + '/api/index/mismascotas', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const res = await r.json();
+    const lista = document.getElementById('lista-mascotas');
+    if (!lista || !res.data?.length) return;
+    lista.innerHTML = res.data.map(m => {
+        const fotos = m.fotos || [];
+        let fotosHtml = '';
+        if (fotos.length) {
+            const extras = fotos.slice(1,4).map(f =>
+                '<div class="overflow-hidden"><img src="' + f + '" class="w-full h-full object-cover"></div>'
+            ).join('');
+            fotosHtml = '<div class="grid grid-cols-4 gap-1 h-40"><div class="col-span-2 row-span-2 overflow-hidden"><img src="' + fotos[0] + '" class="w-full h-full object-cover"></div>' + extras + '</div>';
+        } else {
+            fotosHtml = '<div class="h-24 bg-violet-50 dark:bg-violet-900 flex items-center justify-center text-4xl">' + (m.categoria_icono || '🐾') + '</div>';
+        }
+        return '<div class="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl overflow-hidden mb-4">' +
+            fotosHtml +
+            '<div class="p-4"><div class="font-semibold text-gray-900 dark:text-white">' + m.nombre + '</div>' +
+            '<div class="text-sm text-gray-500 dark:text-slate-400 mt-0.5">' + (m.categoria_icono || '') + ' ' + (m.categoria || '') + ' · ' + (m.raza || 'Sin raza') + (m.edad ? ' · ' + m.edad + ' años' : '') + (m.peso ? ' · ' + m.peso + ' kg' : '') + '</div></div></div>';
+    }).join('');
+}
+
+if (!token) {
+    window.location.href = BASE + '/login';
+} else {
+    cargarPanel().then(() => {
+        // Si viene con #mascotas abrir ese tab
+        if (window.location.hash === '#mascotas') {
+            const btn = document.querySelector("[onclick=\"showTab('mascotas', this)\"]");
+            if (btn) btn.click();
+        }
+    });
+}
+</script>

@@ -1,0 +1,372 @@
+<div class="max-w-lg mx-auto py-8">
+
+    <div id="progress" class="flex items-center justify-center gap-0 mb-10"></div>
+
+    <div class="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-9 shadow-sm">
+        <div id="wizard-content"></div>
+    </div>
+
+    <p class="text-center text-sm text-gray-500 dark:text-slate-400 mt-6">
+        ¿Ya tienes cuenta?
+        <a href="<?= $this->baseUrl('/login') ?>" class="text-violet-600 font-semibold hover:underline">Inicia sesión</a>
+    </p>
+</div>
+
+<script>
+const BASE = '<?= $this->baseUrl() ?>';
+
+const state = {
+    paso: 1,
+    email: '', password: '', nombre: '', apellido: '', telefono: '', ciudad: '',
+    rol: 'dueno',
+    descripcion: '', precionoche: '', preciodia: '', tienepatio: false, capacidad: 2,
+    categorias: [],
+    categoriasDisponibles: []
+};
+
+async function loadCategorias() {
+    try {
+        const r = await fetch(BASE + '/api/index/categorias');
+        const res = await r.json();
+        state.categoriasDisponibles = res.data || [];
+    } catch(e) { state.categoriasDisponibles = []; }
+}
+
+function renderProgress() {
+    const total = state.rol === 'dueno' ? 3 : 4;
+    let html = '';
+    for (let i = 1; i <= total; i++) {
+        const cls = i < state.paso
+            ? 'bg-violet-600 text-white'
+            : i === state.paso
+                ? 'bg-violet-600 text-white ring-4 ring-violet-200 dark:ring-violet-900'
+                : 'bg-gray-100 dark:bg-slate-700 text-gray-400 dark:text-slate-500';
+        html += `<div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${cls}">${i < state.paso ? '✓' : i}</div>`;
+        if (i < total) {
+            html += `<div class="flex-1 h-0.5 max-w-16 ${i < state.paso ? 'bg-violet-600' : 'bg-gray-200 dark:bg-slate-600'}"></div>`;
+        }
+    }
+    document.getElementById('progress').innerHTML = html;
+}
+
+function renderStep() {
+    renderProgress();
+    const c = document.getElementById('wizard-content');
+    if (state.paso === 1) c.innerHTML = renderPaso1();
+    else if (state.paso === 2) c.innerHTML = renderPaso2();
+    else if (state.paso === 3 && state.rol !== 'dueno') c.innerHTML = renderPaso3();
+    else c.innerHTML = renderResumen();
+}
+
+function renderPaso1() {
+    return `
+        <p class="text-xs font-semibold text-violet-600 mb-1">Paso 1 — Cuenta</p>
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-1">Crea tu cuenta</h2>
+        <p class="text-sm text-gray-500 dark:text-slate-400 mb-6">Rápido y seguro</p>
+
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Nombre</label>
+                <input type="text" id="f-nombre" value="${state.nombre}"
+                    class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    placeholder="María">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Apellido</label>
+                <input type="text" id="f-apellido" value="${state.apellido}"
+                    class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    placeholder="García">
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Email</label>
+            <input type="email" id="f-email" value="${state.email}"
+                class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                placeholder="maria@email.com">
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Teléfono</label>
+            <input type="tel" id="f-telefono" value="${state.telefono}"
+                class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                placeholder="300 123 4567">
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Ciudad</label>
+            <input type="text" id="f-ciudad" value="${state.ciudad}"
+                class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                placeholder="Cali">
+        </div>
+
+        <div class="mb-6">
+            <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Contraseña</label>
+            <input type="password" id="f-password"
+                class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                placeholder="Mínimo 8 caracteres">
+        </div>
+
+        <div id="error-1" class="hidden text-red-500 text-sm mb-4"></div>
+
+        <button onclick="siguientePaso1()"
+            class="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-3.5 rounded-xl transition-colors">
+            Continuar →
+        </button>
+    `;
+}
+
+function renderPaso2() {
+    return `
+        <p class="text-xs font-semibold text-violet-600 mb-1">Paso 2 — Tu rol</p>
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-1">¿Cómo usarás AnimalPet?</h2>
+        <p class="text-sm text-gray-500 dark:text-slate-400 mb-6">Puedes cambiar esto después</p>
+
+        <div class="grid grid-cols-3 gap-3 mb-8">
+            ${[
+                { val: 'dueno',    icon: '🐾', label: 'Dueño',    desc: 'Busco cuidador' },
+                { val: 'cuidador', icon: '🏡', label: 'Cuidador', desc: 'Cuido mascotas' },
+                { val: 'ambos',    icon: '⭐', label: 'Ambos',    desc: 'Cuido y tengo' },
+            ].map(r => `
+                <div onclick="selectRol('${r.val}')"
+                    class="rol-card border-2 rounded-2xl p-4 text-center cursor-pointer transition-all
+                           ${state.rol === r.val ? 'border-violet-600 bg-violet-50 dark:bg-violet-950' : 'border-gray-200 dark:border-slate-600 hover:border-violet-400'}"
+                    data-rol="${r.val}">
+                    <div class="text-3xl mb-2">${r.icon}</div>
+                    <div class="text-sm font-bold text-gray-900 dark:text-white">${r.label}</div>
+                    <div class="text-xs text-gray-400 dark:text-slate-500 mt-1">${r.desc}</div>
+                </div>
+            `).join('')}
+        </div>
+
+        <div class="flex gap-3">
+            <button onclick="state.paso=1; renderStep()"
+                class="flex-1 border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-600 dark:text-slate-300 font-semibold py-3 rounded-xl">
+                ← Atrás
+            </button>
+            <button onclick="siguientePaso2()"
+                class="flex-1 bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 rounded-xl transition-colors">
+                Continuar →
+            </button>
+        </div>
+    `;
+}
+
+function renderPaso3() {
+    const cats = state.categoriasDisponibles.map(c => `
+        <div onclick="toggleCategoria(${c.id})"
+            class="cat-item border-2 rounded-xl px-4 py-3 flex items-center gap-2 cursor-pointer transition-all text-sm font-medium
+                   ${state.categorias.includes(c.id)
+                     ? 'border-violet-600 bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300'
+                     : 'border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-300 hover:border-violet-400'}"
+            data-id="${c.id}">
+            <span class="text-xl">${c.icono}</span> ${c.nombre}
+        </div>
+    `).join('');
+
+    return `
+        <p class="text-xs font-semibold text-violet-600 mb-1">Paso 3 — Perfil cuidador</p>
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-1">Tu perfil como cuidador</h2>
+        <p class="text-sm text-gray-500 dark:text-slate-400 mb-6">Aparecerá en tu ficha pública</p>
+
+        <div class="mb-4">
+            <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Descripción</label>
+            <textarea id="f-desc" rows="3"
+                class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
+                placeholder="Cuéntanos sobre ti y tu experiencia...">${state.descripcion}</textarea>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Precio noche (COP)</label>
+                <input type="number" id="f-precionoche" value="${state.precionoche}"
+                    class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    placeholder="45000">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Precio día (COP)</label>
+                <input type="number" id="f-preciodia" value="${state.preciodia}"
+                    class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    placeholder="30000">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Capacidad (mascotas)</label>
+                <input type="number" id="f-capacidad" value="${state.capacidad}" min="1" max="10"
+                    class="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+            </div>
+            <div class="flex items-end pb-3">
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" id="f-patio" ${state.tienepatio ? 'checked' : ''}
+                        class="w-5 h-5 rounded accent-violet-600">
+                    <span class="text-sm font-semibold text-gray-700 dark:text-slate-300">Tengo patio</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="mb-6">
+            <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-2">Mascotas que acepta</label>
+            <div class="grid grid-cols-2 gap-2">${cats}</div>
+        </div>
+
+        <div class="flex gap-3">
+            <button onclick="state.paso=2; renderStep()"
+                class="flex-1 border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-600 dark:text-slate-300 font-semibold py-3 rounded-xl">
+                ← Atrás
+            </button>
+            <button onclick="siguientePaso3()"
+                class="flex-1 bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 rounded-xl transition-colors">
+                Continuar →
+            </button>
+        </div>
+    `;
+}
+
+function renderResumen() {
+    const paso = state.rol === 'dueno' ? 3 : 4;
+    return `
+        <p class="text-xs font-semibold text-violet-600 mb-1">Paso ${paso} — Confirmar</p>
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-1">Todo listo</h2>
+        <p class="text-sm text-gray-500 dark:text-slate-400 mb-6">Revisa tu información</p>
+
+        <div class="bg-gray-50 dark:bg-slate-700 rounded-xl p-4 mb-6 space-y-2 text-sm">
+            <div class="flex justify-between">
+                <span class="text-gray-500 dark:text-slate-400">Nombre</span>
+                <span class="font-semibold text-gray-900 dark:text-white">${state.nombre} ${state.apellido}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-500 dark:text-slate-400">Email</span>
+                <span class="font-semibold text-gray-900 dark:text-white">${state.email}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-500 dark:text-slate-400">Ciudad</span>
+                <span class="font-semibold text-gray-900 dark:text-white">${state.ciudad}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-500 dark:text-slate-400">Rol</span>
+                <span class="font-semibold text-gray-900 dark:text-white capitalize">${state.rol}</span>
+            </div>
+            ${state.rol !== 'dueno' ? `
+            <div class="flex justify-between">
+                <span class="text-gray-500 dark:text-slate-400">Precio noche</span>
+                <span class="font-semibold text-gray-900 dark:text-white">$${Number(state.precionoche||0).toLocaleString('es-CO')}</span>
+            </div>` : ''}
+        </div>
+
+        <div id="error-reg" class="hidden text-red-500 text-sm mb-4"></div>
+        <div id="loading-reg" class="hidden text-center text-violet-600 text-sm mb-4">Creando tu cuenta...</div>
+
+        <div class="flex gap-3">
+            <button onclick="state.paso=${paso-1}; renderStep()"
+                class="flex-1 border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-600 dark:text-slate-300 font-semibold py-3 rounded-xl">
+                ← Atrás
+            </button>
+            <button onclick="registrar()"
+                class="flex-1 bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 rounded-xl transition-colors">
+                Crear cuenta ✓
+            </button>
+        </div>
+    `;
+}
+
+function siguientePaso1() {
+    state.nombre   = document.getElementById('f-nombre').value.trim();
+    state.apellido = document.getElementById('f-apellido').value.trim();
+    state.email    = document.getElementById('f-email').value.trim();
+    state.telefono = document.getElementById('f-telefono').value.trim();
+    state.ciudad   = document.getElementById('f-ciudad').value.trim();
+    state.password = document.getElementById('f-password').value;
+
+    const err = document.getElementById('error-1');
+    if (!state.nombre || !state.apellido || !state.email || !state.ciudad || !state.password) {
+        err.textContent = 'Por favor completa todos los campos.';
+        err.classList.remove('hidden'); return;
+    }
+    if (state.password.length < 8) {
+        err.textContent = 'La contraseña debe tener al menos 8 caracteres.';
+        err.classList.remove('hidden'); return;
+    }
+    err.classList.add('hidden');
+    state.paso = 2;
+    renderStep();
+}
+
+function siguientePaso2() {
+    state.paso = state.rol === 'dueno' ? 3 : 3;
+    renderStep();
+}
+
+function siguientePaso3() {
+    state.descripcion = document.getElementById('f-desc').value.trim();
+    state.precionoche = document.getElementById('f-precionoche').value;
+    state.preciodia   = document.getElementById('f-preciodia').value;
+    state.capacidad   = document.getElementById('f-capacidad').value;
+    state.tienepatio  = document.getElementById('f-patio').checked;
+    state.paso = 4;
+    renderStep();
+}
+
+function selectRol(val) {
+    state.rol = val;
+    document.querySelectorAll('.rol-card').forEach(c => {
+        const sel = c.dataset.rol === val;
+        c.className = `rol-card border-2 rounded-2xl p-4 text-center cursor-pointer transition-all ${
+            sel ? 'border-violet-600 bg-violet-50 dark:bg-violet-950'
+                : 'border-gray-200 dark:border-slate-600 hover:border-violet-400'
+        }`;
+    });
+}
+
+function toggleCategoria(id) {
+    const idx = state.categorias.indexOf(id);
+    if (idx === -1) state.categorias.push(id);
+    else state.categorias.splice(idx, 1);
+    const el = document.querySelector(`.cat-item[data-id="${id}"]`);
+    if (el) {
+        const sel = state.categorias.includes(id);
+        el.className = `cat-item border-2 rounded-xl px-4 py-3 flex items-center gap-2 cursor-pointer transition-all text-sm font-medium ${
+            sel ? 'border-violet-600 bg-violet-50 dark:bg-violet-950 text-violet-700 dark:text-violet-300'
+                : 'border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-300 hover:border-violet-400'
+        }`;
+    }
+}
+
+async function registrar() {
+    const err  = document.getElementById('error-reg');
+    const load = document.getElementById('loading-reg');
+    load.classList.remove('hidden');
+    err.classList.add('hidden');
+
+    try {
+        const r = await fetch(BASE + '/api/index/registro', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(state)
+        });
+        const res = await r.json();
+        if (res.status === 'ok') {
+            document.getElementById('wizard-content').innerHTML = `
+                <div class="text-center py-8">
+                    <div class="w-20 h-20 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-5 text-4xl">🎉</div>
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">¡Bienvenido a AnimalPet!</h2>
+                    <p class="text-gray-500 dark:text-slate-400 mb-6">Tu cuenta fue creada exitosamente.</p>
+                    <a href="${BASE}/" class="bg-violet-600 hover:bg-violet-700 text-white font-bold px-8 py-3 rounded-xl transition-colors inline-block">
+                        Ir al inicio →
+                    </a>
+                </div>`;
+            document.getElementById('progress').innerHTML = '';
+        } else {
+            err.textContent = res.message || 'Error al crear la cuenta.';
+            err.classList.remove('hidden');
+        }
+    } catch(e) {
+        err.textContent = 'Error de conexión. Intenta de nuevo.';
+        err.classList.remove('hidden');
+    }
+    load.classList.add('hidden');
+}
+
+loadCategorias().then(() => renderStep());
+</script>

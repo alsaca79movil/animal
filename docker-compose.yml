@@ -1,0 +1,127 @@
+version: '3.9'
+services:
+
+  docker-host:
+    image: qoomon/docker-host
+    hostname: managercargo-docker-host
+    container_name: managercargo-docker-host
+    cap_add: [ 'NET_ADMIN', 'NET_RAW' ]
+    restart: always
+    environment:
+      - PORTS=9003
+    networks:
+      - managercargo
+
+  php-7.3.28:
+    build: 
+      context: containers/php/7.3.28
+      args: 
+        USER_ID: $USER_ID
+        GROUP_ID: $GROUP_ID
+        USER_NAME: $USER_NAME
+        GROUP_NAME: $GROUP_NAME
+    container_name: managercargo-php-7.3.28
+    hostname: managercargo-php-7.3.28
+    restart: always
+    environment: 
+      APPLICATION_ENV: adrian-development
+    volumes:
+      - ./html:/var/www/html
+      - ./application:/var/www/managercargo/application
+      - ./library-php-7.3.28:/var/www/managercargo/library
+      - ./public:/var/www/managercargo/public
+      - ./composer.json:/var/www/managercargo/composer.json
+      - ./etc/php/7.3.28:/usr/local/etc
+      - /etc/group:/etc/group
+      - /etc/passwd:/etc/passwd
+    depends_on: 
+      - mariadb
+    networks: 
+      - managercargo
+
+  php-8.0.7:
+    build: 
+      context: containers/php/8.0.7
+      args: 
+        USER_ID: $USER_ID
+        GROUP_ID: $GROUP_ID
+        USER_NAME: $USER_NAME
+        GROUP_NAME: $GROUP_NAME
+    container_name: managercargo-php-8.0.7
+    hostname: managercargo-php-8.0.7
+    restart: always
+    environment: 
+      APPLICATION_ENV: adrian-development
+    volumes:
+      - ./html:/var/www/html
+      - ./application:/var/www/managercargo/application
+      - ./vendor:/var/www/managercargo/vendor
+      - ./library:/var/www/managercargo/library
+      - ./public:/var/www/managercargo/public
+      - ./cli-config.php:/var/www/managercargo/cli-config.php
+      - ./composer.json:/var/www/managercargo/composer.json
+      - ./tests:/var/www/managercargo/tests
+      - ./etc/php/8.0.7:/usr/local/etc
+      - /etc/group:/etc/group
+      - /etc/passwd:/etc/passwd
+    depends_on: 
+      - mariadb
+    networks: 
+      - managercargo
+
+  nginx:
+    build: 
+      context: containers/nginx
+      args: 
+        USER_ID: $USER_ID
+        GROUP_ID: $GROUP_ID
+        USER_NAME: $USER_NAME
+        GROUP_NAME: $GROUP_NAME
+    container_name: managercargo-nginx
+    hostname: managercargo-nginx
+    restart: always
+    environment: 
+      USER_ID: $USER_ID
+      GROUP_ID: $GROUP_ID
+      USER_NAME: $USER_NAME
+      GROUP_NAME: $GROUP_NAME
+    volumes: 
+      - ./html:/var/www/html
+      - ./etc/nginx/nginx.conf.template:/etc/nginx/nginx.conf.template
+      - ./etc/nginx/fastcgi_params:/etc/nginx/fastcgi_params
+      - ./etc/nginx/conf.d:/etc/nginx/conf.d
+      - ./etc/nginx/vhost.d:/etc/nginx/vhost.d
+      - ./application:/var/www/managercargo/application
+      - ./library:/var/www/managercargo/library
+      - ./public:/var/www/managercargo/public
+      - ./composer.json:/var/www/managercargo/composer.json
+      - /etc/group:/etc/group
+      - /etc/passwd:/etc/passwd
+    depends_on:
+      - php-7.3.28
+      - php-8.0.7
+    networks: 
+      - managercargo
+  
+  mariadb:
+    build: 
+      context: containers/mariadb
+    container_name: managercargo-mariadb
+    hostname: managercargo-mariadb
+    restart: always
+    environment: 
+      MYSQL_ROOT_PASSWORD: managercargo
+      MYSQL_DATABASE: managercargo
+      MYSQL_USER: managercargo
+      MYSQL_PASSWORD: managercargo
+    volumes: 
+      - "./etc/mysql:/etc/mysql"
+      - "./var/lib/mysql:/var/lib/mysql"
+    ports:
+      - "3306:3306"
+    networks:
+      - managercargo
+
+networks:
+  managercargo:
+    name: managercargo

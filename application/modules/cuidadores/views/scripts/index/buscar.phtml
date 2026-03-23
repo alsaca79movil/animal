@@ -1,0 +1,55 @@
+<h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6">
+    Cuidadores disponibles
+    <?php if ($this->ciudad): ?>
+        en <?= htmlspecialchars($this->ciudad) ?>
+    <?php endif; ?>
+</h2>
+
+<div id="resultados" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+    <div class="col-span-4 text-center text-gray-400 py-8">Buscando cuidadores...</div>
+</div>
+
+<script>
+const BASE    = '<?= $this->baseUrl() ?>';
+const especie = '<?= (int)$this->especie ?>';
+const ciudad  = '<?= addslashes($this->ciudad) ?>';
+const desde   = '<?= addslashes($this->desde) ?>';
+
+fetch(`${BASE}/api/index/buscarcuidadores?especie=${especie}&ciudad=${encodeURIComponent(ciudad)}&desde=${desde}`)
+    .then(r => r.json())
+    .then(res => {
+        const grid = document.getElementById('resultados');
+        if (!res.data || res.data.length === 0) {
+            grid.innerHTML = '<div class="col-span-4 text-center text-gray-400 py-8">No encontramos cuidadores con esos filtros.</div>';
+            return;
+        }
+        grid.innerHTML = res.data.map(c => `
+            <div onclick="window.location.href='${BASE}/cuidadores/index/ver/slug/${c.slug}'"
+                 class="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 overflow-hidden hover:-translate-y-1 hover:shadow-lg transition-all cursor-pointer">
+                <div class="bg-violet-50 dark:bg-violet-900 h-44 flex items-center justify-center text-5xl relative">
+                    ${c.foto ? `<img src="${c.foto}" class="w-full h-full object-cover">` : '🐾'}
+                    ${c.superhost ? '<span class="absolute top-2 left-2 bg-white dark:bg-slate-800 text-xs font-bold px-3 py-1 rounded-full">Superhost</span>' : ''}
+                    <span class="absolute top-2 right-2 bg-white dark:bg-slate-800 dark:text-white text-xs font-semibold px-3 py-1 rounded-full">
+                        ★ ${c.rating ?? 'Nuevo'}
+                    </span>
+                </div>
+                <div class="p-4">
+                    <div class="font-semibold text-gray-900 dark:text-white">${c.nombre}</div>
+                    <div class="text-sm text-gray-500 dark:text-slate-400 mt-1 mb-2">${c.ciudad}</div>
+                    <div class="text-sm text-gray-900 dark:text-slate-200">
+                        <strong>$${Number(c.precionoche || 0).toLocaleString('es-CO')}</strong> / noche
+                    </div>
+                    <div class="flex gap-2 flex-wrap mt-2">
+                        ${(c.categorias || []).map(cat =>
+                            `<span class="bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 text-xs px-3 py-1 rounded-full">${cat.icono} ${cat.nombre}</span>`
+                        ).join('')}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    })
+    .catch(() => {
+        document.getElementById('resultados').innerHTML =
+            '<div class="col-span-4 text-center text-red-400 py-8">Error cargando resultados.</div>';
+    });
+</script>

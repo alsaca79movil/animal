@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="es" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agregar mascota · AnimalPet</title>
+    <script>
+        if (localStorage.getItem('tema') === 'oscuro') document.documentElement.classList.add('dark');
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' };</script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .fade { animation: fadeIn 0.25s ease; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+    </style>
+</head>
+<body class="bg-white dark:bg-slate-900 min-h-screen flex flex-col">
+
+<!-- TOP BAR -->
+<header class="border-b border-gray-100 dark:border-slate-800 px-8 py-4 flex items-center justify-between">
+    <a href="<?= $this->baseUrl('/') ?>" class="flex items-center gap-2">
+        <div class="w-7 h-7 bg-violet-600 rounded-lg flex items-center justify-center">
+            <svg class="w-4 h-4 fill-white" viewBox="0 0 24 24"><path d="M4.5 11a2.5 2.5 0 100-5 2.5 2.5 0 000 5zm15 0a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM12 10a3 3 0 100-6 3 3 0 000 6zM5 18.5c0-3.87 3.13-7 7-7s7 3.13 7 7v.5H5v-.5z"/></svg>
+        </div>
+        <span class="text-violet-600 font-bold text-lg">animalpet</span>
+    </a>
+    <div class="flex items-center gap-3 text-sm text-gray-500 dark:text-slate-400">
+        <span id="paso-label">Paso 1 de 4</span>
+        <button onclick="salir()" class="text-gray-400 hover:text-gray-700 dark:hover:text-slate-200 transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+    </div>
+</header>
+
+<!-- PROGRESS BAR -->
+<div class="h-1 bg-gray-100 dark:bg-slate-800">
+    <div id="progress-bar" class="h-1 bg-violet-600 transition-all duration-300" style="width:25%"></div>
+</div>
+
+<!-- CONTENIDO -->
+<main class="flex-1 flex items-center justify-center px-4 py-12">
+    <div id="wizard" class="w-full max-w-lg fade"></div>
+</main>
+
+<!-- FOOTER NAV -->
+<footer class="border-t border-gray-100 dark:border-slate-800 px-8 py-4 flex justify-between items-center">
+    <button id="btn-atras" onclick="pasoAnterior()"
+        class="px-6 py-2.5 text-sm font-semibold text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-xl transition-colors">
+        ← Atrás
+    </button>
+    <button id="btn-siguiente" onclick="pasoSiguiente()"
+        class="px-8 py-2.5 text-sm font-bold bg-violet-600 hover:bg-violet-700 text-white rounded-xl transition-colors">
+        Siguiente →
+    </button>
+</footer>
+
+<script>
+const BASE  = '<?= $this->baseUrl() ?>';
+const token = localStorage.getItem('ap_token');
+
+if (!token) window.location.href = BASE + '/login';
+
+const state = {
+    paso: 1,
+    nombre: '', raza: '', edad: '', peso: '', descripcion: '', categoria_id: '',
+    categorias: [],
+    fotos: [] // blobs comprimidos
+};
+
+const pasos = [
+    { label: 'Paso 1 de 4', progress: 25  },
+    { label: 'Paso 2 de 4', progress: 50  },
+    { label: 'Paso 3 de 4', progress: 75  },
+    { label: 'Paso 4 de 4', progress: 100 },
+];
+
+async function init() {
+    const r   = await fetch(BASE + '/api/index/categorias');
+    const res = await r.json();
+    state.categorias = res.data || [];
+    renderPaso();
+}
+
+function renderPaso() {
+    document.getElementById('paso-label').textContent    = pasos[state.paso-1].label;
+    document.getElementById('progress-bar').style.width  = pasos[state.paso-1].progress + '%';
+    document.getElementById('btn-atras').style.visibility = state.paso === 1 ? 'hidden' : 'visible';
+    document.getElementById('btn-siguiente').textContent  = state.paso === 4 ? 'Guardar mascota ✓' : 'Siguiente →';
+
+    const w = document.getElementById('wizard');
+    w.classList.remove('fade');
+    void w.offsetWidth;
+    w.classList.add('fade');
+
+    if (state.paso === 1) w.innerHTML = renderPaso1();
+    if (state.paso === 2) w.innerHTML = renderPaso2();
+    if (state.paso === 3) w.innerHTML = renderPaso3();
+    if (state.paso === 4) w.innerHTML = renderPaso4();
+
+    if (state.paso === 3) initFotos();
+}
+
+function renderPaso1() {
+    return `
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">¿Cómo se llama tu mascota?</h1>
+        <p class="text-gray-500 dark:text-slate-400 mb-8">Empieza con el nombre y especie.</p>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Nombre</label>
+                <input id="f-nombre" type="text" value="${state.nombre}" placeholder="Ej: Max"
+                    class="w-full border-2 border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded-2xl px-5 py-4 text-base focus:outline-none focus:border-violet-500 transition-colors">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Especie</label>
+                <div class="grid grid-cols-3 gap-3">
+                    ${state.categorias.map(c => `
+                    <button type="button" onclick="selectCat(${c.id})"
+                        class="cat-btn border-2 rounded-2xl py-4 flex flex-col items-center gap-1 transition-all
+                               ${state.categoria_id == c.id ? 'border-violet-600 bg-violet-50 dark:bg-violet-950' : 'border-gray-200 dark:border-slate-600 hover:border-violet-400'}"
+                        data-id="${c.id}">
+                        <span class="text-2xl">${c.icono}</span>
+                        <span class="text-xs font-semibold text-gray-700 dark:text-slate-300">${c.nombre}</span>
+                    </button>`).join('')}
+                </div>
+            </div>
+        </div>`;
+}
+
+function renderPaso2() {
+    return `
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Datos de ${state.nombre || 'tu mascota'}</h1>
+        <p class="text-gray-500 dark:text-slate-400 mb-8">Raza, edad y peso.</p>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Raza</label>
+                <input id="f-raza" type="text" value="${state.raza}" placeholder="Ej: Golden Retriever"
+                    class="w-full border-2 border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded-2xl px-5 py-4 text-base focus:outline-none focus:border-violet-500 transition-colors">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Edad (años)</label>
+                    <input id="f-edad" type="number" value="${state.edad}" min="0" max="30" step="0.5" placeholder="Ej: 2"
+                        class="w-full border-2 border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded-2xl px-5 py-4 text-base focus:outline-none focus:border-violet-500 transition-colors">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Peso (kg)</label>
+                    <input id="f-peso" type="number" value="${state.peso}" min="0" max="100" step="0.1" placeholder="Ej: 5.5"
+                        class="w-full border-2 border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded-2xl px-5 py-4 text-base focus:outline-none focus:border-violet-500 transition-colors">
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Descripción</label>
+                <textarea id="f-desc" rows="3" placeholder="Comportamiento, necesidades especiales..."
+                    class="w-full border-2 border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded-2xl px-5 py-4 text-base focus:outline-none focus:border-violet-500 transition-colors resize-none">${state.descripcion}</textarea>
+            </div>
+        </div>`;
+}
+
+function renderPaso3() {
+    return `
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Fotos de ${state.nombre || 'tu mascota'}</h1>
+        <p class="text-gray-500 dark:text-slate-400 mb-8">Agrega hasta 5 fotos. La primera será la principal.</p>
+        <div id="fotos-grid" class="grid grid-cols-3 gap-3 mb-3"></div>
+        <p class="text-xs text-gray-400">JPG, PNG o WEBP · se comprimen automáticamente</p>
+        <input id="f-fotos" type="file" multiple accept="image/*" class="hidden">`;
+}
+
+function renderPaso4() {
+    const cat = state.categorias.find(c => c.id == state.categoria_id);
+    return `
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Todo listo</h1>
+        <p class="text-gray-500 dark:text-slate-400 mb-8">Revisa la información antes de guardar.</p>
+        <div class="bg-gray-50 dark:bg-slate-800 rounded-2xl p-6 space-y-3 text-sm mb-6">
+            <div class="flex justify-between"><span class="text-gray-500 dark:text-slate-400">Nombre</span><span class="font-semibold text-gray-900 dark:text-white">${state.nombre}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500 dark:text-slate-400">Especie</span><span class="font-semibold text-gray-900 dark:text-white">${cat ? cat.icono + ' ' + cat.nombre : '—'}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500 dark:text-slate-400">Raza</span><span class="font-semibold text-gray-900 dark:text-white">${state.raza || '—'}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500 dark:text-slate-400">Edad</span><span class="font-semibold text-gray-900 dark:text-white">${state.edad ? state.edad + ' años' : '—'}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500 dark:text-slate-400">Peso</span><span class="font-semibold text-gray-900 dark:text-white">${state.peso ? state.peso + ' kg' : '—'}</span></div>
+            <div class="flex justify-between"><span class="text-gray-500 dark:text-slate-400">Fotos</span><span class="font-semibold text-gray-900 dark:text-white">${state.fotos.length} foto(s)</span></div>
+        </div>
+        ${state.fotos.length ? `
+        <div class="grid grid-cols-5 gap-2">
+            ${state.fotos.map(b => `<img src="${URL.createObjectURL(b)}" class="aspect-square object-cover rounded-xl">`).join('')}
+        </div>` : ''}
+        <div id="msg-final" class="hidden text-sm mt-4"></div>`;
+}
+
+function selectCat(id) {
+    state.categoria_id = id;
+    document.querySelectorAll('.cat-btn').forEach(b => {
+        const sel = parseInt(b.dataset.id) === id;
+        b.className = `cat-btn border-2 rounded-2xl py-4 flex flex-col items-center gap-1 transition-all ${
+            sel ? 'border-violet-600 bg-violet-50 dark:bg-violet-950'
+                : 'border-gray-200 dark:border-slate-600 hover:border-violet-400'}`;
+    });
+}
+
+function initFotos() {
+    renderFotosGrid();
+    document.getElementById('f-fotos').addEventListener('change', async function() {
+        for (const f of Array.from(this.files)) {
+            if (state.fotos.length >= 5) break;
+            state.fotos.push(await comprimirImagen(f));
+        }
+        this.value = '';
+        renderFotosGrid();
+    });
+}
+
+function renderFotosGrid() {
+    const grid = document.getElementById('fotos-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    state.fotos.forEach((blob, i) => {
+        const div = document.createElement('div');
+        div.className = 'relative aspect-square rounded-2xl overflow-hidden border-2 border-gray-200 dark:border-slate-600';
+        div.innerHTML = `
+            <img src="${URL.createObjectURL(blob)}" class="w-full h-full object-cover">
+            <button type="button" onclick="quitarFoto(${i})"
+                class="absolute top-1.5 right-1.5 bg-black bg-opacity-60 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">✕</button>
+            ${i === 0 ? '<span class="absolute bottom-1.5 left-1.5 bg-black bg-opacity-60 text-white text-xs px-2 py-0.5 rounded-full">Principal</span>' : ''}`;
+        grid.appendChild(div);
+    });
+    if (state.fotos.length < 5) {
+        const label = document.createElement('label');
+        label.htmlFor = 'f-fotos';
+        label.className = 'aspect-square rounded-2xl border-2 border-dashed border-gray-300 dark:border-slate-600 flex flex-col items-center justify-center cursor-pointer hover:border-violet-500 transition-colors';
+        label.innerHTML = `<svg class="w-7 h-7 text-gray-400 mb-1" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 4.5v15m7.5-7.5h-15"/></svg><span class="text-xs text-gray-400">Agregar</span>`;
+        grid.appendChild(label);
+    }
+}
+
+function quitarFoto(idx) {
+    state.fotos.splice(idx, 1);
+    renderFotosGrid();
+}
+
+function comprimirImagen(file) {
+    return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = ev => {
+            const img = new Image();
+            img.onload = () => {
+                const maxW = 800;
+                const canvas = document.createElement('canvas');
+                let w = img.width, h = img.height;
+                if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+                canvas.width = w; canvas.height = h;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.8);
+            };
+            img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function pasoSiguiente() {
+    if (state.paso === 1) {
+        state.nombre      = document.getElementById('f-nombre')?.value.trim() || state.nombre;
+        if (!state.nombre)       { alert('Ingresa el nombre de tu mascota'); return; }
+        if (!state.categoria_id) { alert('Selecciona la especie'); return; }
+    }
+    if (state.paso === 2) {
+        state.raza        = document.getElementById('f-raza')?.value.trim() || '';
+        state.edad        = document.getElementById('f-edad')?.value || '';
+        state.peso        = document.getElementById('f-peso')?.value || '';
+        state.descripcion = document.getElementById('f-desc')?.value.trim() || '';
+    }
+    if (state.paso === 4) { guardar(); return; }
+    state.paso++;
+    renderPaso();
+}
+
+function pasoAnterior() {
+    if (state.paso > 1) { state.paso--; renderPaso(); }
+}
+
+async function guardar() {
+    const btn = document.getElementById('btn-siguiente');
+    btn.disabled = true; btn.textContent = 'Guardando...';
+
+    const form = new FormData();
+    form.append('nombre',       state.nombre);
+    form.append('raza',         state.raza);
+    form.append('edad',         state.edad);
+    form.append('peso',         state.peso);
+    form.append('descripcion',  state.descripcion);
+    form.append('categoria_id', state.categoria_id);
+    state.fotos.forEach((b, i) => form.append('fotos[]', b, 'foto_' + i + '.jpg'));
+
+    const r   = await fetch(BASE + '/api/index/guardarmascota', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token },
+        body: form
+    });
+    const res = await r.json();
+
+    if (res.status === 'ok') {
+        document.getElementById('wizard').innerHTML = `
+            <div class="text-center py-8 fade">
+                <div class="w-20 h-20 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">🎉</div>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-3">¡Mascota agregada!</h1>
+                <p class="text-gray-500 dark:text-slate-400 mb-8">${state.nombre} ya está en tu perfil.</p>
+                <div class="flex gap-3 justify-center">
+                    <button onclick="agregarOtra()"
+                        class="px-6 py-3 border-2 border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-300 font-semibold rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                        + Agregar otra
+                    </button>
+                    <a href="${BASE}/panel#mascotas"
+                        class="px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-xl transition-colors">
+                        Ver mis mascotas
+                    </a>
+                </div>
+            </div>`;
+        document.querySelector('footer').classList.add('hidden');
+    } else {
+        const msg = document.getElementById('msg-final');
+        if (msg) { msg.textContent = res.message; msg.className = 'text-sm mt-4 text-red-500'; }
+        btn.disabled = false; btn.textContent = 'Guardar mascota ✓';
+    }
+}
+
+function agregarOtra() {
+    state.paso = 1; state.nombre = ''; state.raza = ''; state.edad = '';
+    state.peso = ''; state.descripcion = ''; state.categoria_id = ''; state.fotos = [];
+    document.querySelector('footer').classList.remove('hidden');
+    renderPaso();
+}
+
+function salir() {
+    window.location.href = BASE + '/panel#mascotas';
+}
+
+init();
+</script>
+</body>
+</html>
